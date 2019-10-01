@@ -4,7 +4,7 @@
 1. Установка
 docker-compose up
 docker-compose web python3 manage.py makemigrations
-# сами миграции начинаются автоматически по docker-compose up, но если очень нужно то:
+сами миграции начинаются автоматически по docker-compose up, но если очень нужно то:
 docker-compose web python3 manage.py migrate
 
 2. Наполнение данными
