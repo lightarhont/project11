@@ -2,56 +2,38 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
 from .tasks import trasactiontaskfunc
-import pickle
 #from .trasactionfunc import trasactionfunc
 
 # Create your views here.
+protokol = 'http://'
+totrasaction = {'audio': [], 'video': [], 'text': []}
+
+def page_set(func, param):
+    l = []
+    for e in func():
+        itemid = eval('e.'+param+'.pk')
+        el  = {'id': itemid,
+               'title':  eval('e.'+param+'.title'),
+               'counter': eval('e.'+param+'.counter')}
+        if param == 'audio':
+            el.update({'bitrate': e.audio.bitrate})
+        if param == 'video':
+            el.update({'fileurl': e.video.fileurl, 'subtitresurl': e.video.subtitresurl})
+        if param == 'text':
+            el.update({'text': e.text.text})
+        l.append(el)
+        totrasaction[param].append(itemid)
+    return l
+
 class PageView(APIView):
     def get(self, request, item):
         page = Page.objects.filter(pk=item).first()
         
-        totrasaction = {'audio': [], 'video': [], 'text': []}
-        
-        la = []
-        for e in page.pageaudio_set.all():
-            el = {
-                  'id': e.audio.pk,
-                  'title': e.audio.title,
-                  'counter': e.audio.counter,
-                  'bitrate': e.audio.bitrate,
-                  }
-
-            totrasaction['audio'].append(e.audio.pk)
-            la.append({'order': e.order, 'quantity': e.quantity, 'el': el})
-        lv = []
-        for e in page.pagevideo_set.all():
-            el = {
-                  'id': e.video.pk,
-                  'title': e.video.title,
-                  'counter': e.video.counter,
-                  'fileurl': e.video.fileurl,
-                  'subtitresurl': e.video.subtitresurl
-                  }
-            totrasaction['video'].append(e.video.pk)
-            lv.append({'order': e.order, 'quantity': e.quantity, 'el': el})
-        lt = []
-        for e in page.pagetext_set.all():
-            el = {
-                  'id': e.text.pk,
-                  'title': e.text.title,
-                  'counter': e.text.counter,
-                  'text': e.text.text,
-                  }
-            totrasaction['text'].append(e.text.pk)
-            lt.append({'order': e.order, 'quantity': e.quantity, 'el': el})
-        
-        content = {
-            "id": item,
-            "title": page.title,
-            "audio": la,
-            "video": lv,
-            "text": lt,
-                   }
+        content = {"id": item,
+                   "title": page.title,
+                   "audio": page_set(page.pageaudio_set.all, 'audio'),
+                   "video": page_set(page.pagevideo_set.all, 'video'),
+                   "text": page_set(page.pagetext_set.all, 'text'),}
         
         trasactiontaskfunc.delay(totrasaction)
         #trasactionfunc(totrasaction)
@@ -60,8 +42,9 @@ class PageView(APIView):
     
 class PagesView(APIView):
     def get(self, request, offset, limit):
+        host = protocol+request.get_host()
         pages = Page.objects.all()[offset:limit]
         urls = []
         for e in pages:
-            urls.append('http://127.0.0.1:8000/api/page/'+str(e.id))
+            urls.append(host+'/api/page/'+str(e.id))
         return Response(urls)
